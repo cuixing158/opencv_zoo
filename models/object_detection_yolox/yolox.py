@@ -1,17 +1,8 @@
 import numpy as np
 import cv2
 
-
 class YoloX:
-    def __init__(
-        self,
-        modelPath,
-        confThreshold=0.35,
-        nmsThreshold=0.5,
-        objThreshold=0.5,
-        backendId=0,
-        targetId=0,
-    ):
+    def __init__(self, modelPath, confThreshold=0.35, nmsThreshold=0.5, objThreshold=0.5, backendId=0, targetId=0):
         self.num_classes = 80
         self.net = cv2.dnn.readNet(modelPath)
         self.input_size = (640, 640)
@@ -59,28 +50,20 @@ class YoloX:
 
         # get boxes
         boxes = dets[:, :4]
-        boxes_xywh = np.ones_like(boxes)
-        boxes_xywh[:, 0] = boxes[:, 0] - boxes[:, 2] / 2.0
-        boxes_xywh[:, 1] = boxes[:, 1] - boxes[:, 3] / 2.0
-        boxes_xywh[:, 2] = boxes[:, 2]
-        boxes_xywh[:, 3] = boxes[:, 3]
+        boxes_xyxy = np.ones_like(boxes)
+        boxes_xyxy[:, 0] = boxes[:, 0] - boxes[:, 2] / 2.
+        boxes_xyxy[:, 1] = boxes[:, 1] - boxes[:, 3] / 2.
+        boxes_xyxy[:, 2] = boxes[:, 0] + boxes[:, 2] / 2.
+        boxes_xyxy[:, 3] = boxes[:, 1] + boxes[:, 3] / 2.
 
         # get scores and class indices
         scores = dets[:, 4:5] * dets[:, 5:]
         max_scores = np.amax(scores, axis=1)
         max_scores_idx = np.argmax(scores, axis=1)
 
-        keep = cv2.dnn.NMSBoxesBatched(
-            boxes_xywh.tolist(),
-            max_scores.tolist(),
-            max_scores_idx.tolist(),
-            self.confThreshold,
-            self.nmsThreshold,
-        )
+        keep = cv2.dnn.NMSBoxesBatched(boxes_xyxy.tolist(), max_scores.tolist(), max_scores_idx.tolist(), self.confThreshold, self.nmsThreshold)
 
-        candidates = np.concatenate(
-            [boxes_xywh, max_scores[:, None], max_scores_idx[:, None]], axis=1
-        )
+        candidates = np.concatenate([boxes_xyxy, max_scores[:, None], max_scores_idx[:, None]], axis=1)
         if len(keep) == 0:
             return np.array([])
         return candidates[keep]
